@@ -7,8 +7,6 @@ from typing import Union, Tuple, List, Iterable
 
 from Metadata.us_state_abbrev import us_state_abbrev
 
-print(us_state_abbrev)
-
 class cleaning_script():
     def __init__(self, filename: str):
         self.df = pd.read_csv(f'data/{filename}.csv')
