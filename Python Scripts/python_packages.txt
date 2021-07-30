@@ -1,0 +1,12 @@
+pip install pandas
+pip install pandas
+pip install numpy
+pip install pgeocode
+pip install re
+pip install pyzipcode
+pip install pathlib
+pip install typings
+pip install sklearn
+pip install matplotlib
+pip install plotly
+pip install scipy
