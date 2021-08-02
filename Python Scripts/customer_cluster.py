@@ -21,6 +21,8 @@ from typing import List
 
 from pathlib import Path
 
+import pickle as pk
+
 class data_cluster:
     def __init__(self):
         self.customer_df = pd.read_csv(r'Clean_Data/Customer_clean.csv')
@@ -178,6 +180,11 @@ class data_cluster:
 
         pca_dataset = pd.concat([pca_dataset, data], axis=1)
 
+        Path(r'Models').mkdir(parents=True, exist_ok=True)
+        
+        if ~Path('Models/pca.pkl').is_file():
+            pk.dump(pca_fit, open(f'Models/pca.pkl',"wb"))
+
         return pca_dataset
 
     def cluster_scatter(self, data: pd.DataFrame, components: List[str]) -> None:
@@ -219,7 +226,7 @@ class data_cluster:
             ['latitude', 'longitude', 'Sales Amount (Actual)', 'Distributors', 'Off premise', 'On premise', 'Others']
         )
 
-        # self.plot_cluster_elbow(dendrogram_plot_data, 30)
+        self.plot_cluster_elbow(dendrogram_plot_data, 30)
 
         clustered_data = self.compute_km_cluster(dendrogram_plot_data, 5)
 
