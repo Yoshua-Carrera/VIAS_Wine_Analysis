@@ -23,6 +23,8 @@ from pathlib import Path
 
 import pickle as pk
 
+from os import path
+
 class data_cluster:
     def __init__(self):
         self.customer_df = pd.read_csv(r'Clean_Data/Customer_clean.csv')
@@ -168,21 +170,23 @@ class data_cluster:
             print(data[0].info)
             data[0].to_csv(f'Clustered Data/{filename}.csv')
 
-    def pca(self, data: pd.DataFrame, n_comp: int, columns: List[str]=None) -> pd.DataFrame:
+    def pca(self, data: pd.DataFrame, n_comp: int, uid: str, columns: List[str]=None) -> pd.DataFrame:
         pca = PCA(n_components=n_comp)
         data = data.reset_index(drop=True)
+        uid_data = data[uid]
+        data = data.dropna().drop(uid, axis=1)
         if columns is None:
-            pca_fit = pca.fit_transform(data.dropna())
+            pca_fit = pca.fit_transform(data)
         else:
-            pca_fit = pca.fit_transform(data[columns].dropna())
+            pca_fit = pca.fit_transform(data[columns])
 
         pca_dataset = pd.DataFrame(data = pca_fit, columns=['component_1', 'component_2'])
 
-        pca_dataset = pd.concat([pca_dataset, data], axis=1)
+        pca_dataset = pd.concat([pca_dataset, data, uid_data], axis=1)
 
         Path(r'Models').mkdir(parents=True, exist_ok=True)
         
-        if ~Path('Models/pca.pkl').is_file():
+        if not path.exists('Models/pca.pkl'):
             pk.dump(pca_fit, open(f'Models/pca.pkl',"wb"))
 
         return pca_dataset
@@ -214,10 +218,10 @@ class data_cluster:
         dendrogram_data = self.create_dummies(
             customer_joined_df, 
             'On premise/off premise',
-             ['latitude', 'longitude', 'Sales Amount (Actual)', 'Distributors', 'Off premise', 'On premise', 'Others']
+             ['No_', 'latitude', 'longitude', 'Sales Amount (Actual)', 'Distributors', 'Off premise', 'On premise', 'Others']
         )
 
-        pca_data = self.pca(dendrogram_data.dropna(), 2)
+        pca_data = self.pca(dendrogram_data.dropna(), 2, uid='No_')
         
         dendrogram_plot_data = self.create_dendrogram(pca_data[['component_1', 'component_2']], plot=False, subset=False, standard_scale=['*'])
         
