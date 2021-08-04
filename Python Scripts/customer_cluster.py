@@ -188,7 +188,7 @@ class data_cluster:
         return pca_dataset
 
     def cluster_scatter(self, data: pd.DataFrame, components: List[str]) -> None:
-
+        
         clusters = data['cluster_group'].unique()
         fg = seaborn.FacetGrid(data=data, hue='cluster_group', hue_order=clusters, aspect=1.61)
         fg.map(plt.scatter, components[0], components[1]).add_legend()
