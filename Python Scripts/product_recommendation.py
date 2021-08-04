@@ -49,10 +49,10 @@ class product_recommendation():
     def association_rules(self, data: np.array, min_sup: float, min_conf: float, min_lift: float, min_lenght: int) -> List:
         association_rules = apriori(
             data, 
-            min_support=0.05, 
-            min_confidence=0.25, 
-            min_lift=3, 
-            min_length=2
+            min_support=min_sup, 
+            min_confidence=min_conf, 
+            min_lift=min_lift, 
+            min_length=min_lenght
         )
 
         association_results = list(association_rules)
