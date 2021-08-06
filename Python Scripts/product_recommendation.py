@@ -6,10 +6,16 @@ from typing import List, Union, Dict
 from pathlib import Path
 
 class product_recommendation():
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, *args):
         self.df = pd.read_csv(f'data/{filename}.csv')
+        self.df_dict = {}
+        for arg in args:
+            self.df_dict[arg] = pd.read_csv(f'data/{arg}.csv', engine='python')
+            
+        
     
     def grouped_line_graph(self, data: pd.DataFrame, group_col: str, graph_col: str, xlabel: str, ylabel: str, title: str) -> pd.DataFrame:
+        print('grouped_line_graph')
         document_count = data[[group_col, graph_col]].groupby(group_col).count().sort_values(by=graph_col, ascending=False).reset_index()
         plt.figure(figsize=(20, 10))
         plt.plot(document_count[graph_col])
@@ -21,12 +27,14 @@ class product_recommendation():
         return document_count
     
     def subset_top_count(self, data: pd.DataFrame, subset_size: int, count_data: pd.DataFrame, count_label_col: str) -> pd.DataFrame:
+        print('subset_top_count')
         document_subset = count_data.head(subset_size)[count_label_col]
         association_df = data[data[count_label_col].astype(str).isin(document_subset.tolist())].reset_index(drop=True)
         
         return association_df
 
     def dummy_and_group(self, data: pd.DataFrame, cols: List[str], group_col: str) -> pd.DataFrame:
+        print('dummy_and_group')
         dummy_df = pd.get_dummies(data[cols]).reset_index(drop=True)
         updated_df = pd.concat([data, dummy_df], axis=1)
         updated_df = updated_df.groupby(group_col).sum()
@@ -34,6 +42,7 @@ class product_recommendation():
         return updated_df
 
     def replace_dummmy_colname(self, data: pd.DataFrame) -> Union[pd.DataFrame, np.array]:
+        print('replace_dummmy_colname')
         for col in data.columns:
             data[col] = data[col].astype(str).replace('1', col).replace('0', np.nan)
 
@@ -47,6 +56,7 @@ class product_recommendation():
         return data, association_list_clean
 
     def association_rules(self, data: np.array, min_sup: float, min_conf: float, min_lift: float, min_lenght: int) -> List:
+        print('association_rules')
         association_rules = apriori(
             data, 
             min_support=min_sup, 
@@ -55,11 +65,14 @@ class product_recommendation():
             min_length=min_lenght
         )
 
+        print('past bottleneck')
+
         association_results = list(association_rules)
 
         return association_results
-
+    
     def display_association_rules(self, rule_list: List) -> Dict:
+        print('display_association_rules')
         print('\nTotal of association rules found:', len(rule_list), '\n')
         results_dict = {}
 
@@ -77,7 +90,7 @@ class product_recommendation():
             results_dict['rule'].append( (str(items_x) + "->" + str(items_y)) ) 
             results_dict['support'].append( str(item[1]) ) 
             results_dict['confidence'].append( str(item[2][0][2]) ) 
-            results_dict['Lift'].append( str(item[2][0][2]) ) 
+            results_dict['Lift'].append( str(item[2][0][3]) ) 
 
             print("Rule: " + str(items_x) + "->" + str(items_y))
             
@@ -89,20 +102,22 @@ class product_recommendation():
         return results_dict
 
     def _write_rules(self, results_dict, filename: str) -> None:
+        print('_write_rules')
         df = pd.DataFrame.from_dict(results_dict, orient='index').transpose()
         Path(r'Association results').mkdir(parents=True, exist_ok=True)
         df.to_csv(f'Association results/{filename}.csv')
 
     def execute_script(self, data: pd.DataFrame):
-        document_count = self.grouped_line_graph(data, 'Document No_', 'No_', 'Document Number', 'Line Count', 'Line Count By Invoice')
+        print('execute_script')
+        data = pd.merge(left=data, right=self.df_dict['item'][['No_', 'Description']], how='left', left_on='No_', right_on='No_')
+        document_count = self.grouped_line_graph(data, 'Document No_', 'Description', 'Document Number', 'Line Count', 'Line Count By Invoice')
         association_df = self.subset_top_count(data, 500, document_count, 'Document No_')
-        association_df = self.dummy_and_group(association_df, 'No_', 'Document No_')
+        association_df = self.dummy_and_group(association_df, 'Description', 'Document No_')
         association_rules_df, association_rules_clean_list = self.replace_dummmy_colname(association_df)
-        print(association_rules_df.head())
-        association_rules = self.association_rules(association_rules_clean_list, min_sup=0.05, min_conf=0.025, min_lift=3, min_lenght=2)
+        association_rules = self.association_rules(association_rules_clean_list, min_sup=0.1, min_conf=0.1, min_lift=3, min_lenght=2)
         association_rules_dict = self.display_association_rules(association_rules)
         self._write_rules(association_rules_dict, 'association_rules_df')
 
 if __name__=='__main__':
-    PR = product_recommendation('Sales_Invoice_Line')
+    PR = product_recommendation('Sales_Invoice_Line', 'item')
     PR.execute_script(PR.df)

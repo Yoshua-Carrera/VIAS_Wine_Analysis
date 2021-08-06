@@ -177,7 +177,7 @@ class data_cluster:
         data = data.dropna().drop(uid, axis=1)
         if columns is None:
             pca_fit = pca.fit_transform(data)
-        else:
+        else: 
             pca_fit = pca.fit_transform(data[columns])
 
         pca_dataset = pd.DataFrame(data = pca_fit, columns=['component_1', 'component_2'])
