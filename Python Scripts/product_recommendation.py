@@ -107,7 +107,7 @@ class product_recommendation():
         Path(r'Association results').mkdir(parents=True, exist_ok=True)
         df.to_csv(f'Association results/{filename}.csv')
 
-    def execute_script(self, data: pd.DataFrame):
+    def execute_script(self, data: pd.DataFrame) -> pd.DataFrame:
         print('execute_script')
         data = pd.merge(left=data, right=self.df_dict['item'][['No_', 'Description']], how='left', left_on='No_', right_on='No_')
         document_count = self.grouped_line_graph(data, 'Document No_', 'Description', 'Document Number', 'Line Count', 'Line Count By Invoice')
@@ -117,6 +117,7 @@ class product_recommendation():
         association_rules = self.association_rules(association_rules_clean_list, min_sup=0.1, min_conf=0.1, min_lift=3, min_lenght=2)
         association_rules_dict = self.display_association_rules(association_rules)
         self._write_rules(association_rules_dict, 'association_rules_df')
+        return association_rules_df
 
 if __name__=='__main__':
     PR = product_recommendation('Sales_Invoice_Line', 'item')

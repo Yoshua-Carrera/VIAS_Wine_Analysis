@@ -96,14 +96,14 @@ class data_cluster:
                     new_cols[col] = f'{col}_scaled'  
 
                 scaled_cols = StandardScaler().fit_transform(dendrogram_data)
-                dendrogram_data_scaled = pd.DataFrame(data=scaled_cols, columns=dendrogram_data.columns).rename(columns=new_cols)
+                dendrogram_data = pd.DataFrame(data=scaled_cols, columns=dendrogram_data.columns).rename(columns=new_cols)
             else:    
                 for col in standard_scale:
                     new_cols[col] = f'{col}_scaled'  
 
                 scaled_cols = StandardScaler().fit_transform(dendrogram_data[standard_scale])
-                dendrogram_data_scaled = pd.DataFrame(scaled_cols, columns=standard_scale)
-                dendrogram_data_scaled = pd.concat([dendrogram_data.drop(standard_scale, axis=1), dendrogram_data_scaled], axis=1).rename(columns=new_cols)
+                dendrogram_data = pd.DataFrame(scaled_cols, columns=standard_scale)
+                dendrogram_data = pd.concat([dendrogram_data.drop(standard_scale, axis=1), dendrogram_data], axis=1).rename(columns=new_cols)
         
         # plot
         if plot:
@@ -130,15 +130,15 @@ class data_cluster:
                     fig = ff.create_dendrogram(dendrogram_data)
                     fig.update_layout(width=2000, height=500)
                     py.offline.plot(fig)
-        print(dendrogram_data_scaled.info)
+        print(dendrogram_data.info)
 
         if uid in data.columns:
             data = data.dropna(how='any').reset_index(drop=True)
-            dendrogram_data_scaled_complete = pd.concat([data, dendrogram_data_scaled], axis=1)
+            dendrogram_data_complete = pd.concat([data, dendrogram_data], axis=1)
 
-            return dendrogram_data_scaled, dendrogram_data_scaled_complete
+            return dendrogram_data, dendrogram_data_complete
 
-        return dendrogram_data_scaled
+        return dendrogram_data
 
     def compute_df_stats(self, df: pd.DataFrame, col_list: List[str]):
         for var in col_list:
@@ -209,7 +209,8 @@ class data_cluster:
         fg = seaborn.FacetGrid(data=data, hue='cluster_group', hue_order=clusters, aspect=1.61)
         fg.map(plt.scatter, components[0], components[1]).add_legend()
 
-    def exectute_script(self, no_dup_cols: List[str], dummy_col: List[str], dendrogram: bool, uid: str, filename: str, pca: bool=True, cluster_cols: List[str]=None):
+    def exectute_script(self, no_dup_cols: List[str], dummy_col: List[str], dendrogram: bool, uid: str, filename: str, 
+                        pca: bool=True, cluster_cols: List[str]=None, standard_scale: List[str]=None):
         no_dup_customer_df =  self.fix_duplicates(self.customer_df, no_dup_cols)
         item_ledger_entry_joined = self.join_summarize_data(
             self.value_entry,
@@ -259,7 +260,7 @@ class data_cluster:
         
         else:
             dendrogram_plot_data, dendrogram_plot_data_complete = self.create_dendrogram(dendrogram_data[cluster_cols + [uid]], 
-                                                                        plot=dendrogram, subset=False, standard_scale=['*'],
+                                                                        plot=dendrogram, subset=False, standard_scale=standard_scale,
                                                                         uid=uid)
             
             self.compute_df_stats(
@@ -284,11 +285,13 @@ if __name__=='__main__':
                                     dendrogram=False,
                                     filename='clustered_data',
                                     uid='No_',
+                                    standard_scale=['*'],
                                     pca=False)
     customer_cluster.exectute_script(no_dup_cols=['No_', 'Name'], 
                                     dummy_col='On premise/off premise',
                                     cluster_cols=['Sales Amount (Actual)'],
-                                    dendrogram=False,
+                                    dendrogram=True,
                                     filename='clustered_data_sales_only',
                                     uid='No_',
+                                    standard_scale=['*'],
                                     pca=False)
