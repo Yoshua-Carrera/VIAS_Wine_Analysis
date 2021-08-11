@@ -150,7 +150,13 @@ class data_cluster:
         # Log transform sales
         if log_transform:
             for col in log_transform:
-                dendrogram_data[col] = np.log(dendrogram_data[col])
+                dendrogram_data['{col}_log'] = np.log(dendrogram_data[col])
+                dendrogram_data['{col}_log'] = dendrogram_data['{col}_log'][~np.isinf(dendrogram_data['{col}_log'])]
+                dendrogram_data = dendrogram_data.drop(col, axis=1)
+
+            dendrogram_data = dendrogram_data.dropna().reset_index(drop=True)
+            index=pd.DataFrame(dendrogram_data.index, columns=['index'])
+            data = pd.concat([index, data], axis=1).dropna(subset=['index']).reset_index(drop=True).drop('index', axis=1)
         
         if standard_scale:
             new_cols = {}
@@ -187,21 +193,15 @@ class data_cluster:
 
             else:
                 if subset:
-                    fig = ff.create_dendrogram(dendrogram_data.head(subset_n)[plot_cols])
+                    fig = ff.create_dendrogram(dendrogram_data.head(subset_n))
                     fig.update_layout(width=2000, height=500)
                     py.offline.plot(fig)
                 else:
-                    fig = ff.create_dendrogram(dendrogram_data[plot_cols])
+                    fig = ff.create_dendrogram(dendrogram_data)
                     fig.update_layout(width=2000, height=500)
                     py.offline.plot(fig)
         print(dendrogram_data.info)
 
-        # if uid in data.columns:
-        #     data = data.dropna(how='any').reset_index(drop=True)
-        #     dendrogram_data_complete = pd.concat([data, dendrogram_data], axis=1)
-
-        #     return dendrogram_data, dendrogram_data_complete
-        
         dendrogram_data_complete = pd.concat([dendrogram_data, data], axis=1)
         
         return dendrogram_data, dendrogram_data_complete
@@ -278,7 +278,7 @@ class data_cluster:
         plt.show()
 
     def exectute_script(self, no_dup_cols: List[str], dummy_col: List[str], dendrogram: bool, scatter: bool, scatter_cols: List[str], uid: str, filename: str, 
-                        pca: bool=True, cluster_cols: List[str]=None, standard_scale: List[str]=None, scatter_axis_labs: List[str]=None):
+                        pca: bool=True, cluster_cols: List[str]=None, standard_scale: List[str]=None, log_transform: List[str]=None, scatter_axis_labs: List[str]=None):
         no_dup_customer_df =  self.fix_duplicates(self.customer_df, no_dup_cols)
         item_ledger_entry_joined = self.join_summarize_data(
             self.value_entry,
@@ -346,7 +346,8 @@ class data_cluster:
                                                                                         subset=False, 
                                                                                         standard_scale=standard_scale,
                                                                                         uid=uid,
-                                                                                        plot_cols=cluster_cols)
+                                                                                        plot_cols=cluster_cols,
+                                                                                        log_transform=log_transform)
             
             self.compute_df_stats(
                 dendrogram_data,
@@ -371,17 +372,31 @@ class data_cluster:
 
 if __name__=='__main__':
     customer_cluster = data_cluster()
-    customer_cluster.exectute_script(no_dup_cols=['No_', 'Name'], 
-                                    dummy_col='On premise/off premise',
-                                    cluster_cols=['latitude', 'longitude', 'Sales Amount (Actual)', 'Off premise', 'On premise'],
-                                    dendrogram=True,
-                                    scatter= True,
-                                    scatter_cols=['Sales Amount (Actual)_scaled', 'No_'],
-                                    scatter_axis_labs=['Sales', 'Client'],
-                                    filename='clustered_data',
-                                    uid='No_',
-                                    standard_scale=['*'],
-                                    pca=True)
+    # customer_cluster.exectute_script(no_dup_cols=['No_', 'Name'], 
+    #                                 dummy_col='On premise/off premise',
+    #                                 cluster_cols=['latitude', 'longitude', 'Sales Amount (Actual)', 'Off premise', 'On premise'],
+    #                                 dendrogram=True,
+    #                                 scatter= True,
+    #                                 scatter_cols=['Sales Amount (Actual)_scaled', 'No_'],
+    #                                 scatter_axis_labs=['Sales', 'Client'],
+    #                                 filename='clustered_data',
+    #                                 uid='No_',
+    #                                 standard_scale=['*'],
+    #                                 pca=True)
+    # print('*'*50)
+    # print('*'*50)
+    # print('*'*50)
+    # customer_cluster.exectute_script(no_dup_cols=['No_', 'Name'], 
+    #                                 dummy_col='On premise/off premise',
+    #                                 cluster_cols=['Sales Amount (Actual)'],
+    #                                 dendrogram=True,
+    #                                 scatter= True,
+    #                                 scatter_cols=['Sales Amount (Actual)_scaled', 'No_'],
+    #                                 scatter_axis_labs=['Sales', 'Client'],
+    #                                 filename='clustered_data_sales_only',
+    #                                 uid='No_',
+    #                                 standard_scale=['*'],
+    #                                 pca=False)
     print('*'*50)
     print('*'*50)
     print('*'*50)
@@ -390,10 +405,11 @@ if __name__=='__main__':
                                     cluster_cols=['Sales Amount (Actual)'],
                                     dendrogram=True,
                                     scatter= True,
-                                    scatter_cols=['Sales Amount (Actual)_scaled', 'No_'],
+                                    scatter_cols=['Sales Amount (Actual)'],
+                                    log_transform=['Sales Amount (Actual)'],
                                     scatter_axis_labs=['Sales', 'Client'],
                                     filename='clustered_data_sales_only',
                                     uid='No_',
-                                    standard_scale=['*'],
+                                    standard_scale=None,
                                     pca=False)
     
