@@ -26,6 +26,62 @@ import pickle as pk
 from os import path
 
 class data_cluster:
+    '''
+    Data cluster Class: object class that takes multiple pandas Data Frame Objects in order to train and graph clustering models
+
+    Methods:
+        - fix_duplicates
+            * Takes a pandas DF and a list of string with column names in order create a mirror column with duplicate marks to later 
+            filter out duplicate values.
+            * Returns the same pandas DF but with all duplicates removed from the column list.
+         
+        - join_summarize_data
+            * Takes a pandas DF to group, a list of columns to filter before grouping, a grouping variable, a pandas DF to join, 
+            left and right keys to perform a join, and a string variable indicating th kind of join (left by default)
+            * Returns the grouped and joined DF
+
+        -  create_dummies
+            * Takes a pandas DF and a list of columns by which dummies will be created
+            * Returns a pandas DF with the dummy variables added.
+        
+        - create_dendrogram
+            * Takes a pandas DF, a plotting package selection (scipy or plotly), a boolean to indicate if a subset will be created, 
+            the size of the subset (can be left blank if no subset is used), a boolean to indicate NA values removal, a boolean to 
+            indicate log transformation, a boolean to indicate standard scaling, a unique id str, the clustering columns as a list of 
+            strings, a plot boolean to indicate whether the plot will be rendered or not 
+            * Returns a tuple of pandas DF, the data used to plot the dendrogram (regardless of rendering or not) and the original data 
+            joined by the reset index
+
+        -  compute_df_stats
+            * Takes a pandas DF and a list of columns to run statistics on and then prints them to the terminal
+            * No returns added
+
+        - plot_cluster_elbow
+            * Takes a pandas DF with the desired clustering columns and a max number of cluster to render an elbow plot
+            * No returns
+            * It is meant to use the dendrogram plot data in order to compute this
+
+        - compute_km_cluster
+            * takes a pandas DF (same as "plot_cluster_elbow") and the number of clusters in order to compute the cluster labels
+            * cluster labels are added to the DF and it is returned
+        
+        - write_cluster_data
+            * Takes a list of pandas df and a filename, if more than one DF is to be written they will be concatenated by index
+            * No returns, directories are created in case they dont exist
+        
+        - pca
+            * Takes a pandas DF, component count, unique identifier, a model name, a list of columns to compute the PCA
+            * If no column information is given, PCA will be computed on the entire DF
+            * The model is written as a pickle file that can be later be modeled in order to replicate the results
+            * Returns the PCA dataset, in other words, a DF with a column for every principal component
+
+        - cluster_scatter
+            * Takes a pandas DF, a list of components for the scatter (axis), labels for the x and y axis
+            * Doesnt have a return but renders a scatter plot
+        
+        - exectute_script
+            * List of instructions of all the previous methods and properties of the class
+    '''
     def __init__(self):
         self.customer_df = pd.read_csv(r'Clean_Data/Customer_clean.csv')
         self.sales_invoice_header_df = pd.read_csv(r'Clean_Data/Sales_Invoice_Header_Clean.csv')
@@ -45,7 +101,6 @@ class data_cluster:
             df = df[~df[col].isin(duplicate_list)] # Filtering
         
         return df
-        
 
     def join_summarize_data(self, group_df: pd.DataFrame, group_cols: List[str], group_var: str, join_df: pd.DataFrame, left_on: str, right_on:str, how='left'):
         # Summarize And Join Data
@@ -67,7 +122,7 @@ class data_cluster:
 
     def create_dendrogram(self, data: pd.DataFrame, pkg: str='scipy', plot_cols: List[str]=None, subset: bool=False, subset_n: int=500, 
                             plot:bool=True, drop_na: bool=True, log_transform: List[str]=None, standard_scale: List[str]=None, uid: str=None,
-                            cluster_cols: List[str]=None):
+                            cluster_cols: List[str]=None, pca: bool=False):
         '''
         ['Unnamed: 0', 'No_', 'Name', 'Address', 'City',
             'Customer Posting Group', 'Salesperson Code', 'Shipment Method Code',
@@ -80,17 +135,17 @@ class data_cluster:
         '''
         if plot_cols is None:
             plot_cols = list(data.columns)
+        
+        if pca:
+            cluster_cols = list(data.columns)
 
         dendrogram_data = data[cluster_cols]
 
         if drop_na:
             # Ignore Customers without data
         
-        # if uid:
-            data = data.dropna(subset=cluster_cols).reset_index(drop=True).drop(columns=[uid])
+            data = data.dropna(subset=cluster_cols).reset_index(drop=True)
             dendrogram_data = dendrogram_data.dropna(subset=cluster_cols).reset_index(drop=True)
-        # else:
-            # dendrogram_data = data.dropna(subset=cluster_cols).reset_index(drop=True)
         
         # Log transform sales
         if log_transform:
@@ -118,13 +173,13 @@ class data_cluster:
         if plot:
             if pkg == 'scipy':
                 if subset:
-                    Z = linkage(dendrogram_data.head(subset_n)[plot_cols], 'ward')
+                    Z = linkage(dendrogram_data.head(subset_n), 'ward')
                     fig = plt.figure(figsize=(25, 10))
                     dn = dendrogram(Z)
                     print('dn', dn)
                     plt.show()
                 else:
-                    Z = linkage(dendrogram_data[plot_cols], 'ward')
+                    Z = linkage(dendrogram_data, 'ward')
                     fig = plt.figure(figsize=(25, 10))
                     dn = dendrogram(Z)
                     print('dn', dn)
@@ -141,11 +196,11 @@ class data_cluster:
                     py.offline.plot(fig)
         print(dendrogram_data.info)
 
-        if uid in data.columns:
-            data = data.dropna(how='any').reset_index(drop=True)
-            dendrogram_data_complete = pd.concat([data, dendrogram_data], axis=1)
+        # if uid in data.columns:
+        #     data = data.dropna(how='any').reset_index(drop=True)
+        #     dendrogram_data_complete = pd.concat([data, dendrogram_data], axis=1)
 
-            return dendrogram_data, dendrogram_data_complete
+        #     return dendrogram_data, dendrogram_data_complete
         
         dendrogram_data_complete = pd.concat([dendrogram_data, data], axis=1)
         
@@ -255,8 +310,9 @@ class data_cluster:
                                 columns=cluster_cols,
                                 modelname='pca')
             
-            dendrogram_plot_data = self.create_dendrogram(pca_data[['component_1', 'component_2']], 
-                                                            plot=dendrogram, subset=False, standard_scale=['*'])
+            dendrogram_plot_data, dendrogram_plot_data_complete = self.create_dendrogram(pca_data[['component_1', 'component_2']], 
+                                                                                            plot=dendrogram, subset=False, standard_scale=['*'], 
+                                                                                            cluster_cols=cluster_cols, pca=True)
             
             self.compute_df_stats(
                 pca_data,
@@ -264,15 +320,22 @@ class data_cluster:
             )
 
             self.plot_cluster_elbow(dendrogram_plot_data, 30)
-
-            clustered_data = self.compute_km_cluster(dendrogram_plot_data, 5)
-
-            self.write_cluster_data([clustered_data, pca_data], 'clustered_data')
+            
+            if standard_scale:
+                cluster_cols = ['component_1_scaled', 'component_2_scaled']
+            else:
+                cluster_cols = ['component_1', 'component_2']
+            
+            clustered_data = self.compute_km_cluster(dendrogram_plot_data_complete[cluster_cols], 5)
+            
+            write_data = pd.concat([clustered_data['cluster_group'], dendrogram_plot_data_complete], axis=1)
+            
+            self.write_cluster_data([write_data], filename) # str(datetime.now().strftime('%Y%m%d%H%M%S'))
 
             if scatter:
                 if scatter_axis_labs: #['component_1_scaled', 'component_2_scaled'] ------ ['Component 1 Scaled', 'Component 2 Scaled']
                     xlab, ylab = scatter_axis_labs[0], scatter_axis_labs[1]
-                    self.cluster_scatter(clustered_data, scatter_cols, xlab, ylab)
+                    self.cluster_scatter(clustered_data, cluster_cols, xlab, ylab)
                 else:
                     self.cluster_scatter(clustered_data, scatter_cols)
 
@@ -282,7 +345,8 @@ class data_cluster:
                                                                                         plot=dendrogram, 
                                                                                         subset=False, 
                                                                                         standard_scale=standard_scale,
-                                                                                        uid=uid)
+                                                                                        uid=uid,
+                                                                                        plot_cols=cluster_cols)
             
             self.compute_df_stats(
                 dendrogram_data,
@@ -310,22 +374,22 @@ if __name__=='__main__':
     customer_cluster.exectute_script(no_dup_cols=['No_', 'Name'], 
                                     dummy_col='On premise/off premise',
                                     cluster_cols=['latitude', 'longitude', 'Sales Amount (Actual)', 'Off premise', 'On premise'],
-                                    dendrogram=False,
-                                    scatter= False,
+                                    dendrogram=True,
+                                    scatter= True,
                                     scatter_cols=['Sales Amount (Actual)_scaled', 'No_'],
                                     scatter_axis_labs=['Sales', 'Client'],
                                     filename='clustered_data',
                                     uid='No_',
                                     standard_scale=['*'],
-                                    pca=False)
+                                    pca=True)
     print('*'*50)
     print('*'*50)
     print('*'*50)
     customer_cluster.exectute_script(no_dup_cols=['No_', 'Name'], 
                                     dummy_col='On premise/off premise',
                                     cluster_cols=['Sales Amount (Actual)'],
-                                    dendrogram=False,
-                                    scatter= False,
+                                    dendrogram=True,
+                                    scatter= True,
                                     scatter_cols=['Sales Amount (Actual)_scaled', 'No_'],
                                     scatter_axis_labs=['Sales', 'Client'],
                                     filename='clustered_data_sales_only',

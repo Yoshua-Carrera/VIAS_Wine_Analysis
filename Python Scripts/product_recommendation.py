@@ -6,6 +6,9 @@ from typing import List, Union, Dict
 from pathlib import Path
 
 class product_recommendation():
+    '''
+    Product
+    '''
     def __init__(self, filename: str, *args):
         self.df = pd.read_csv(f'data/{filename}.csv')
         self.df_dict = {}
