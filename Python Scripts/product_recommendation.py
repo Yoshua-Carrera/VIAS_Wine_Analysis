@@ -7,15 +7,81 @@ from pathlib import Path
 
 class product_recommendation():
     '''
-    Product
+    Product recommendation Class: object class that takes a pandas dataframe containing product order data in order to compute association rules
+
+    Mehotds
+        - grouped_line_graph
+            * Takes a pandas DF, list of colmns to group by, column name to graph, graph label strings
+            * The df input structure contains 1 row per order detail, so it is grouped by invoice number in order to count the number of lines
+            per invoice code
+            * Renders a line plot showing the line count per document
+            * Return a summarized dataset that shows the line count per document
+
+        - subset_top_count
+            * The purpose of this method is to subset the invoices and select only the top (by line count) of them
+            * Takes a complete DF to be subset, a DF containing the invoice and corresponding line count, a subset size integer
+            a label for the count colum
+            * Subsets the cont DF, and extracts the document numbers in order to filter the complete dataframe
+            * Returns the filtered "complete" DF
+
+        - dummy_and_group
+            * The purpose of this method is to "dummify" the column containing the product code and then group the DF by invoice number in order
+            to have a DF in the following structure:
+
+                                    Invoice	 Product 1	Product 2	Product …	Product n
+                                        1	|    1	  |       0	  |           |     1     |
+                                        2	|    0	  |       0	  |           |     1     |
+                                        …	|    	  |       	  |           |           |
+                                        n	|    1	  |       1	  |           |     1     |
+
+            here "0" means the invoice does not contain the product and "1" means the invoice contains the number.
+
+            * A DF is returned in the structure shown above
+
+        - replace_dummmy_colname
+            * Parts from the output shown in the previous method (only input taken), then replaces every "1" with the column name and every "0" 
+            eith a NaN value (missing value)
+            * A DF is returned in the structure shown above, and the same data in list form
+        
+        - association_rules
+            * This method trains the model itself, it takes data in array form where each individual array contains as many items as there are
+            products in an order. It looks like this:
+                        [
+                            [Product A, Product F, Product E, ..., Product ?],
+                            [Product B, Product I, Product P, ..., Product ?],
+                        ]
+            Arrays have different lengths, and it depends on the number of lines each invoice has
+            
+            * This method also take numrical values for min_sup, min_conf, min_lift, min_length
+            * it is convenient to do a quick summary of the main stadistics computed:
+                ~ We define 2 item sets X and Y where thre exists an association rule given certain parameter thresholds, X and Y
+                dont necesarilly have the same length. (X => Y)
+                ~ Support is calculated by measuring the proportion of the orders that contain both X and Y
+                ~ Confidence is the numbers of orders that contain both X and Y divided by the the orders that contain X
+                ~ Lift is confidence/support, an it is the likelihood of getting X and Y together rather than just Y
+                ~ Length is the number of elements in a rule
+                ~ E.G: {Wine, Beer} => {Scotch} ---- Support=0.4, confidence=0.67, Lift=1.675, length=3
+                A client is 1.675 more likely to get wine, beer and scoth, rather than just scotch
+            * The method returns a nested list containing all the rules generated at the given thresholds
+        
+        - display_association_rules
+            * This method takes the association rules nested list and displays the each rule, with its parameters
+            * It also saves all the important information in a dictionary that is finally returned
+
+        - _write_rules
+            * This method writes the association rules in a CSV file by using the association rules dictionary returned
+            by the previous method
+
+        - execute_script
+            * Executes all the methods of the class
+            * Here the itemcode is replaced by the item description in order to overlook little product variations and have
+            more practical association rules
     '''
     def __init__(self, filename: str, *args):
         self.df = pd.read_csv(f'data/{filename}.csv')
         self.df_dict = {}
         for arg in args:
             self.df_dict[arg] = pd.read_csv(f'data/{arg}.csv', engine='python')
-            
-        
     
     def grouped_line_graph(self, data: pd.DataFrame, group_col: str, graph_col: str, xlabel: str, ylabel: str, title: str) -> pd.DataFrame:
         print('grouped_line_graph')

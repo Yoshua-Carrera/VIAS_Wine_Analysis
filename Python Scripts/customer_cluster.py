@@ -273,7 +273,10 @@ class data_cluster:
         
         clusters = data['cluster_group'].unique()
         fg = seaborn.FacetGrid(data=data, hue='cluster_group', hue_order=clusters, aspect=1.61)
-        fg.map(plt.scatter, components[0], components[1]).add_legend()
+        if len(components) == 1:
+            fg.map(plt.scatter, components[0], components[0]).add_legend()
+        else:
+            fg.map(plt.scatter, components[0], components[1]).add_legend()
         fg.set(yticks=[], xticks=[])
         plt.show()
 
@@ -403,12 +406,12 @@ if __name__=='__main__':
     customer_cluster.exectute_script(no_dup_cols=['No_', 'Name'], 
                                     dummy_col='On premise/off premise',
                                     cluster_cols=['Sales Amount (Actual)'],
-                                    dendrogram=True,
+                                    dendrogram=False,
                                     scatter= True,
-                                    scatter_cols=['Sales Amount (Actual)'],
+                                    scatter_cols=['Sales Amount (Actual)', 'No_'],
                                     log_transform=['Sales Amount (Actual)'],
                                     scatter_axis_labs=['Sales', 'Client'],
-                                    filename='clustered_data_sales_only',
+                                    filename='clustered_data_sales_only (log)',
                                     uid='No_',
                                     standard_scale=None,
                                     pca=False)
