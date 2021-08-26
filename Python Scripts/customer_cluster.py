@@ -104,7 +104,7 @@ class data_cluster:
 
     def join_summarize_data(self, group_df: pd.DataFrame, group_cols: List[str], group_var: str, join_df: pd.DataFrame, left_on: str, right_on:str, how='left'):
         # Summarize And Join Data
-        df_summmarized = group_df[group_cols].groupby(group_var).sum()
+        df_summmarized = group_df[group_cols].groupby(group_var).sum() # Data goruped and summed
 
         df_joined = join_df.merge(df_summmarized, 
                                     left_on=left_on, 
@@ -114,8 +114,11 @@ class data_cluster:
         return df_joined
 
     def create_dummies(self, df: pd.DataFrame, col: str) -> pd.DataFrame:
+        # Dummy columns are created
         dendrogram_data = pd.get_dummies(df[col])
+        # Dummy columns are joined to the original DF
         dendrogram_data = pd.concat([df, dendrogram_data], axis=1)
+        # Index is reset and onld index is dropped
         dendrogram_data = dendrogram_data.reset_index(drop=True)
         
         return dendrogram_data
@@ -408,7 +411,7 @@ if __name__=='__main__':
                                     cluster_cols=['Sales Amount (Actual)'],
                                     dendrogram=False,
                                     scatter= True,
-                                    scatter_cols=['Sales Amount (Actual)', 'No_'],
+                                    scatter_cols=['Sales Amount (Actual)'],#, 'No_'],
                                     log_transform=['Sales Amount (Actual)'],
                                     scatter_axis_labs=['Sales', 'Client'],
                                     filename='clustered_data_sales_only (log)',

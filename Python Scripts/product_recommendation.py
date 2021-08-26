@@ -95,12 +95,15 @@ class product_recommendation():
 
         return document_count
     
-    def subset_top_count(self, data: pd.DataFrame, subset_size: int, count_data: pd.DataFrame, count_label_col: str) -> pd.DataFrame:
+    def subset_top_count(self, data: pd.DataFrame, subset_size: int, count_data: pd.DataFrame, count_label_col: str, subset: bool) -> pd.DataFrame:
         print('subset_top_count')
-        document_subset = count_data.head(subset_size)[count_label_col]
-        association_df = data[data[count_label_col].astype(str).isin(document_subset.tolist())].reset_index(drop=True)
+        if subset:
+            document_subset = count_data.head(subset_size)[count_label_col]
+            association_df = data[data[count_label_col].astype(str).isin(document_subset.tolist())].reset_index(drop=True)
+            
+            return association_df
         
-        return association_df
+        return data
 
     def dummy_and_group(self, data: pd.DataFrame, cols: List[str], group_col: str) -> pd.DataFrame:
         print('dummy_and_group')
@@ -126,6 +129,7 @@ class product_recommendation():
 
     def association_rules(self, data: np.array, min_sup: float, min_conf: float, min_lift: float, min_lenght: int) -> List:
         print('association_rules')
+        print(len(data))
         association_rules = apriori(
             data, 
             min_support=min_sup, 
@@ -176,18 +180,32 @@ class product_recommendation():
         Path(r'Association results').mkdir(parents=True, exist_ok=True)
         df.to_csv(f'Association results/{filename}.csv')
 
-    def execute_script(self, data: pd.DataFrame) -> pd.DataFrame:
+    def execute_script(self, data: pd.DataFrame, filename: str, subset: bool) -> pd.DataFrame:
         print('execute_script')
         data = pd.merge(left=data, right=self.df_dict['item'][['No_', 'Description']], how='left', left_on='No_', right_on='No_')
         document_count = self.grouped_line_graph(data, 'Document No_', 'Description', 'Document Number', 'Line Count', 'Line Count By Invoice')
-        association_df = self.subset_top_count(data, 500, document_count, 'Document No_')
+        association_df = self.subset_top_count(data, 500, document_count, 'Document No_', subset=subset)
         association_df = self.dummy_and_group(association_df, 'Description', 'Document No_')
         association_rules_df, association_rules_clean_list = self.replace_dummmy_colname(association_df)
         association_rules = self.association_rules(association_rules_clean_list, min_sup=0.1, min_conf=0.1, min_lift=3, min_lenght=2)
         association_rules_dict = self.display_association_rules(association_rules)
-        self._write_rules(association_rules_dict, 'association_rules_df')
+        self._write_rules(association_rules_dict, filename)
         return association_rules_df
 
 if __name__=='__main__':
     PR = product_recommendation('Sales_Invoice_Line', 'item')
-    PR.execute_script(PR.df)
+    # Original clustering 
+    PR.execute_script(PR.df, 'association_rules_df', subset=True)
+    
+    # Cluster specific
+    # Import Clustered dataset, it contains customer numbers
+    cluster_df = pd.read_csv('Clustered Data/clustered_data_sales_only (log).csv')
+    # Get a list of unique possible clusters 
+    cluster_groups = list(cluster_df['cluster_group'].unique())
+    # Save lists of customer numbers for each cluster group 
+    cluster_dict = {}
+    for cluster in cluster_groups:
+        cluster_dict[str(cluster)] = list(cluster_df[cluster_df['cluster_group'] == cluster]['No_'])
+    # Run script execution iteratively
+    for cluster in cluster_dict:
+        PR.execute_script(PR.df[PR.df['Sell-to Customer No_'].isin(cluster_dict[cluster])], f'association_rules_df_cluster_{str(cluster)}', subset=False)
